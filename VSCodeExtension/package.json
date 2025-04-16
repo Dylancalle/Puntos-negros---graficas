@@ -1,0 +1,116 @@
+{
+  "name": "tdd-extension-taller",
+  "displayName": "TDD Lab",
+  "description": "Plugin de VSCode para la aplicación TDDLab",
+  "publisher": "TDDLab-TallerDesarrollo",
+  "version": "0.1.8",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:tddTestExecution",
+    "onCommand:TDD.runTest"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "keybindings": [
+      {
+        "command": "TDD.runTest",
+        "key": "ctrl+t"
+      }
+    ],
+    "commands": [
+      {
+        "command": "TDD.runTest",
+        "title": "Run Test"
+      },
+      {
+        "command": "TDD.runTestActivity",
+        "title": "TDD Lab Test"
+      },
+      {
+        "command": "extension.showTimeline",
+        "title": "Show Timeline"
+      },
+      {
+        "command": "TDD.cloneCommand",
+        "title": "Clone Proyect"
+      },
+      {
+        "command": "TDD.exportCommand",
+        "title": "Exportar sesion TDDLab"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "myExtension",
+          "title": "TDD Lab",
+          "icon": "resources/TddLab_v2.png"
+        }
+      ],
+      "panel": [
+        {
+          "id": "timelineContainer",
+          "title": "TDDLAB",
+          "icon": ""
+        }
+      ]
+    },
+    "views": {
+      "myExtension": [
+        {
+          "id": "tddTestExecution",
+          "name": "TDD test execution"
+        }
+      ],
+      "timelineContainer": [
+        {
+          "id": "timelineView",
+          "name": "Timeline",
+          "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "TDD.runTestActivity",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.6",
+    "@types/crypto-js": "^4.2.2",
+    "@types/mocha": "^10.0.7",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.94.0",
+    "@typescript-eslint/eslint-plugin": "^8.3.0",
+    "@typescript-eslint/parser": "^8.3.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.9.1",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.4.5",
+    "extension": "file:",
+    "node-fetch": "^3.3.2",
+    "tdd-extension-taller": "file:"
+  }
+}
