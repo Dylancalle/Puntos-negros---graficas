@@ -1,177 +1,100 @@
-import { Octokit } from "octokit";
+import fetch from "node-fetch";
 import { CommitDataObject } from "../domain/githubCommitInterfaces";
-import { JobDataObject } from "../domain/jobInterfaces";
 import { GithubAPIRepository } from "../domain/GithubAPIRepositoryInterface";
-import { formatDate } from '../application/GetTDDCycles';
-import { CommitCycle } from "../domain/TddCycleInterface.ts";
-import axios from "axios";
+import { CommitCycle } from "../domain/TddCycleInterface";
+import { formatDate } from "../application/GetTDDCycles";
 import { VITE_API } from "../../../../config.ts";
 
-export class GithubAPIAdapter implements GithubAPIRepository {
-  octokit: Octokit;
-  backAPI: string;
-  
+const GRAPHQL_URL = "https://api.github.com/graphql";
+
+export class GithubAPIAltAdapter implements GithubAPIRepository {
+  private backAPI: string;
+  private token: string;
+
   constructor() {
-    this.octokit = new Octokit();
-    //auth: 'coloca tu token github para mas requests'
-    this.backAPI = VITE_API + "/TDDCycles"; // https://localhost:3000/api/ -> https://tdd-lab-api-gold.vercel.app/api/
+    this.backAPI = VITE_API + "/TDDCycles";
+    this.token = process.env.GITHUB_TOKEN || "";
   }
 
-  async obtainUserName(owner: string): Promise<string> {
-    try {
-      const response = await this.octokit.request(`GET /users/${owner}`);
-      
-      if (response.status !== 200) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+  private async queryGitHubGraphQL(query: string, variables: any = {}) {
+    const response = await fetch(GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `bearer ${this.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`GitHub GraphQL API error: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  async obtainCommitsOfRepo(owner: string, repo: string): Promise<CommitDataObject[]> {
+    const query = `
+      query($owner: String!, $repo: String!) {
+        repository(owner: $owner, name: $repo) {
+          defaultBranchRef {
+            target {
+              ... on Commit {
+                history(first: 30) {
+                  edges {
+                    node {
+                      message
+                      committedDate
+                      oid
+                      url
+                      additions
+                      deletions
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
-      
-      const userName = response.data.name;
-      return userName || owner; // Retorna el nombre o un mensaje si no está disponible
-    } catch (error) {
-      console.error("Error obtaining user name:", error);
-      throw error;
-    }
+    `;
+
+    const data = await this.queryGitHubGraphQL(query, { owner, repo });
+    const commitsRaw = data.data.repository.defaultBranchRef.target.history.edges;
+
+    return commitsRaw.map((edge: any) => {
+      const node = edge.node;
+      return {
+        html_url: node.url,
+        sha: node.oid,
+        stats: {
+          total: node.additions + node.deletions,
+          additions: node.additions,
+          deletions: node.deletions,
+          date: formatDate(new Date(node.committedDate)),
+        },
+        commit: {
+          date: new Date(node.committedDate),
+          message: node.message,
+          url: node.url,
+          comment_count: 0,
+        },
+        coverage: Math.random() * 100, // Simulación
+        test_count: Math.floor(Math.random() * 10), // Simulación
+      };
+    });
   }
 
-  async obtainCommitsOfRepo(
-    owner: string,
-    repoName: string,
-  ): Promise<CommitDataObject[]> {
-    try {
-      const response = await axios.get(
-        this.backAPI + `/commits?owner=${owner}&repoName=${repoName}`,
-      );
-      console.log(
-        this.backAPI + `/commits?owner=${owner}&repoName=${repoName}`,
-      );
+  async obtainCommitTddCycle(owner: string, repoName: string): Promise<CommitCycle[]> {
+    const url = `${this.backAPI}/get-commits?owner=${owner}&repoName=${repoName}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Error from backend: ${res.status}`);
+    const data = await res.json();
 
-      if (response.status != 200) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const responseData: [] = response.data;
-      const commits: CommitDataObject[] = responseData.map(
-        (commitData: any) => ({
-          html_url: commitData.html_url,
-          sha: commitData.sha,
-          stats: {
-            total: commitData.total,
-            additions: commitData.additions,
-            deletions: commitData.deletions,
-            date: formatDate(new Date(commitData.commit_date))
-          },
-          commit: {
-            date: new Date(commitData.commit_date), // Convert date string to Date object
-            message: commitData.message,
-            url: commitData.url,
-            comment_count: commitData.comment_count,
-          },
-          coverage: commitData.coverage,
-          test_count: commitData.test_count,
-        }),
-      );
-      console.log(commits)
-      return commits;
-    } catch (error) {
-      // Handle any errors here
-      console.error("Error obtaining commits:", error);
-      throw error;
-    }
-  }
-  async obtainComplexityOfRepo(owner: string, repoName: string) {
-    try {
-      const repoUrl = `https://github.com/${owner}/${repoName}`;
-      
-      const response = await axios.post("https://api-ccn.vercel.app/analyzeAvgCcn", {
-        repoUrl,
-      });
-
-     
-      if (response.status !== 200) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const responseData = response.data.results;
-      console.log(response.data)
-      return  responseData.map((complexity: any) => ({
-        ciclomaticComplexity: Math.round(complexity.average_cyclomatic_complexity),
-        commit: complexity.commit,
-      }));
-
-      
-    } catch (error) {
-      console.error("Error obtaining jobs:", error);
-      throw error;
-    }
-  }
-
-  async obtainRunsOfGithubActions(owner: string, repoName: string) {
-    try {
-      const response = await this.octokit.request(
-        `GET /repos/${owner}/${repoName}/actions/runs`,
-      );
-
-      return response;
-    } catch (error) {
-      // Handle any errors here
-      console.error("Error obtaining runs:", error);
-      throw error;
-    }
-  }
-
-  async obtainJobsOfRepo(
-    owner: string,
-    repoName: string,
-  ): Promise<JobDataObject[]> {
-    try {
-      const response = await axios.get(`${this.backAPI}/jobs`, {
-        params: { owner, repoName },
-      });
-
-      if (response.status !== 200) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const responseData = response.data;
-      const jobs: JobDataObject[] = responseData.map((jobData: any) => ({
-        sha: jobData.sha,
-        conclusion: jobData.conclusion,
-      }));
-
-      return jobs;
-    } catch (error) {
-      console.error("Error obtaining jobs:", error);
-      throw error;
-    }
-  }
-
-  async obtainCommitTddCycle(
-    owner: string,
-    repoName: string,
-  ): Promise<CommitCycle[]> {
-    try {
-      const response = await axios.get(
-        this.backAPI + `/get-commits?owner=${owner}&repoName=${repoName}`,
-      );
-      console.log(
-        this.backAPI + `/get-commits?owner=${owner}&repoName=${repoName}`,
-      );
-
-      if (response.status != 200) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      const responseData: [] = response.data;
-      const commits: CommitCycle[] = responseData.map(
-        (commitData: any) => ({
-          url: commitData.url,
-          sha: commitData.sha,
-          tddCylce: commitData.tdd_cycle ?? "null"
-        }),
-      );
-      console.log(commits)
-      return commits;
-    } catch (error) {
-      // Handle any errors here
-      console.error("Error obtaining commits:", error);
-      throw error;
-    }
+    return data.map((commitData: any) => ({
+      url: commitData.url,
+      sha: commitData.sha,
+      tddCylce: commitData.tdd_cycle ?? "null"
+    }));
   }
 }
