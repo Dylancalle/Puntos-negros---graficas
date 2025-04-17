@@ -1,13 +1,13 @@
 import { IDBJobsRepository } from "../Domain/IDBJobsRepository";
-import { IGithubRepository } from "../Domain/IGithubRepository";
+import { ITDDLabRepository } from "../Domain/ITDDLabRepository";
 
 export class GetTestResultsUseCase {
   private readonly dbJobRepository: IDBJobsRepository;
-  private readonly githubRepository: IGithubRepository;
+  private readonly githubRepository: ITDDLabRepository;
 
   constructor(
     dbJobRepository: IDBJobsRepository,
-    githubRepository: IGithubRepository
+    githubRepository: ITDDLabRepository
   ) {
     this.dbJobRepository = dbJobRepository;
     this.githubRepository = githubRepository;
@@ -15,7 +15,7 @@ export class GetTestResultsUseCase {
   async execute(owner: string, repoName: string) {
     try {
       const githubActionsRunsList =
-        await this.githubRepository.getRunsOfGithubActionsIds(owner, repoName);
+        await this.githubRepository.getRunsOfLogIds(owner, repoName);
       let jobsToSave = githubActionsRunsList;
       if (await this.dbJobRepository.repositoryExists(owner, repoName)) {
         jobsToSave = await this.dbJobRepository.getJobsNotSaved(
@@ -24,7 +24,7 @@ export class GetTestResultsUseCase {
           githubActionsRunsList
         );
       }
-      const jobsFormatted = await this.githubRepository.getJobsDataFromGithub(
+      const jobsFormatted = await this.githubRepository.getJobsDataFromLog(
         owner,
         repoName,
         jobsToSave

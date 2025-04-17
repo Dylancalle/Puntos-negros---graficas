@@ -1,6 +1,6 @@
 import { GetTestResultsUseCase } from "../../../../src/modules/TDDCycles/Application/getTestResultsUseCase";
 import { IDBJobsRepository } from "../../../../src/modules/TDDCycles/Domain/IDBJobsRepository";
-import { IGithubRepository } from "../../../../src/modules/TDDCycles/Domain/IGithubRepository";
+import { ITDDLabRepository } from "../../../../src/modules/TDDCycles/Domain/ITDDLabRepository";
 import { githubActionsRunsList, jobsFormatted, jobsToSave, mockJobDataObject } from "../../../__mocks__/TDDCycles/dataTypeMocks/jobData";
 
 jest.mock("../../../../src/modules/TDDCycles/Domain/IDBJobsRepository", () => {
@@ -13,25 +13,25 @@ jest.mock("../../../../src/modules/TDDCycles/Domain/IDBJobsRepository", () => {
         };
     });
 });
-jest.mock("../../../../src/modules/TDDCycles/Domain/IGithubRepository", () => {
+jest.mock("../../../../src/modules/TDDCycles/Domain/ITDDLabRepository", () => {
     return jest.fn().mockImplementation(() => {
         return {
             getJobs: jest.fn(),
             getJobsInfoForTestResults: jest.fn(),
-            getRunsOfGithubActionsIds: jest.fn(),
-            getJobsDataFromGithub: jest.fn(),
+            getRunsOfLogIds: jest.fn(),
+            getJobsDataFromLog: jest.fn(),
         };
     });
 });
 
 describe("GetTestResultsUseCase", () => {
     let dbJobRepository: jest.Mocked<IDBJobsRepository>;
-    let githubRepository: jest.Mocked<IGithubRepository>;
+    let githubRepository: jest.Mocked<ITDDLabRepository>;
     let useCase: GetTestResultsUseCase;
 
     beforeEach(() => {
         dbJobRepository = new (require("../../../../src/modules/TDDCycles/Domain/IDBJobsRepository"))();
-        githubRepository = new (require("../../../../src/modules/TDDCycles/Domain/IGithubRepository"))();
+        githubRepository = new (require("../../../../src/modules/TDDCycles/Domain/ITDDLabRepository"))();
         useCase = new GetTestResultsUseCase(dbJobRepository, githubRepository);
     });
 
@@ -50,18 +50,18 @@ describe("GetTestResultsUseCase", () => {
         const owner = "owner";
         const repoName = "repoName";
 
-        githubRepository.getRunsOfGithubActionsIds.mockResolvedValue(githubActionsRunsList);
+        githubRepository.getRunsOfLogIds.mockResolvedValue(githubActionsRunsList);
         dbJobRepository.repositoryExists.mockResolvedValue(true);
         dbJobRepository.getJobsNotSaved.mockResolvedValue(jobsToSave);
-        githubRepository.getJobsDataFromGithub.mockResolvedValue(jobsFormatted);
+        githubRepository.getJobsDataFromLog.mockResolvedValue(jobsFormatted);
         dbJobRepository.getJobs.mockResolvedValue(mockJobDataObject);
 
         const result = await useCase.execute(owner, repoName);
 
-        expect(githubRepository.getRunsOfGithubActionsIds).toHaveBeenCalledWith(owner, repoName);
+        expect(githubRepository.getRunsOfLogIds).toHaveBeenCalledWith(owner, repoName);
         expect(dbJobRepository.repositoryExists).toHaveBeenCalledWith(owner, repoName);
         expect(dbJobRepository.getJobsNotSaved).toHaveBeenCalledWith(owner, repoName, githubActionsRunsList);
-        expect(githubRepository.getJobsDataFromGithub).toHaveBeenCalledWith(owner, repoName, jobsToSave);
+        expect(githubRepository.getJobsDataFromLog).toHaveBeenCalledWith(owner, repoName, jobsToSave);
         expect(dbJobRepository.saveJobsList).toHaveBeenCalledWith(owner, repoName, jobsFormatted);
         expect(dbJobRepository.getJobs).toHaveBeenCalledWith(owner, repoName);
         expect(result).toEqual(mockJobDataObject);
@@ -70,7 +70,7 @@ describe("GetTestResultsUseCase", () => {
         const owner = "owner";
         const repoName = "repoName";
 
-        githubRepository.getRunsOfGithubActionsIds.mockRejectedValue(new Error("Error fetching jobs"));
+        githubRepository.getRunsOfLogIds.mockRejectedValue(new Error("Error fetching jobs"));
 
         await expect(useCase.execute(owner, repoName)).rejects.toThrow("Error fetching jobs");
     });

@@ -1,6 +1,6 @@
 import { GetTDDCyclesUseCase } from "../../../../src/modules/TDDCycles/Application/getTDDCyclesUseCase";
 import { IDBCommitsRepository } from "../../../../src/modules/TDDCycles/Domain/IDBCommitsRepository";
-import { IGithubRepository } from "../../../../src/modules/TDDCycles/Domain/IGithubRepository";
+import { ITDDLabRepository } from "../../../../src/modules/TDDCycles/Domain/ITDDLabRepository";
 import { commitsFromGithub, tddCycleDataObjectMock, unsavedCommits } from "../../../__mocks__/TDDCycles/dataTypeMocks/commitData";
 
 
@@ -14,7 +14,7 @@ jest.mock("../../../../src/modules/TDDCycles/Domain/IDBCommitsRepository", () =>
         };
     });
 });
-jest.mock("../../../../src/modules/TDDCycles/Domain/IGithubRepository", () => {
+jest.mock("../../../../src/modules/TDDCycles/Domain/ITDDLabRepository", () => {
     return jest.fn().mockImplementation(() => {
         return {
             getCommits: jest.fn(),
@@ -25,12 +25,12 @@ jest.mock("../../../../src/modules/TDDCycles/Domain/IGithubRepository", () => {
 
 describe("GetTDDCyclesUseCase", () => {
     let dbCommitRepository: jest.Mocked<IDBCommitsRepository>;
-    let githubRepository: jest.Mocked<IGithubRepository>;
+    let githubRepository: jest.Mocked<ITDDLabRepository>;
     let useCase: GetTDDCyclesUseCase;
 
     beforeEach(() => {
         dbCommitRepository = new (require("../../../../src/modules/TDDCycles/Domain/IDBCommitsRepository"))();
-        githubRepository = new (require("../../../../src/modules/TDDCycles/Domain/IGithubRepository"))();
+        githubRepository = new (require("../../../../src/modules/TDDCycles/Domain/ITDDLabRepository"))();
         useCase = new GetTDDCyclesUseCase(dbCommitRepository, githubRepository);
     });
 

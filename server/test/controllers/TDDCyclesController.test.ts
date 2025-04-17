@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { IGithubRepository } from '../../src/modules/TDDCycles/Domain/IGithubRepository';
+import { ITDDLabRepository } from '../../src/modules/TDDCycles/Domain/ITDDLabRepository';
 import { IDBCommitsRepository } from '../../src/modules/TDDCycles/Domain/IDBCommitsRepository';
 import { IDBJobsRepository } from '../../src/modules/TDDCycles/Domain/IDBJobsRepository';
 import TDDCyclesController from '../../src/controllers/TDDCycles/TDDCyclesController';
@@ -13,7 +13,7 @@ describe('TDDCyclesController', () => {
     let mockResponse: Partial<Response>;
     let mockDBCommitsRepository: IDBCommitsRepository;
     let mockDBJobsRepository: IDBJobsRepository;
-    let mockGithubRepository: IGithubRepository;
+    let mockGithubRepository: ITDDLabRepository;
 
     beforeEach(() => {
         mockRequest = {};
@@ -23,7 +23,7 @@ describe('TDDCyclesController', () => {
         };
         mockDBCommitsRepository = {} as IDBCommitsRepository;
         mockDBJobsRepository = {} as IDBJobsRepository;
-        mockGithubRepository = {} as IGithubRepository;
+        mockGithubRepository = {} as ITDDLabRepository;
         controller = new TDDCyclesController(mockDBCommitsRepository, mockDBJobsRepository, mockGithubRepository);
     });
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { IDBJobsRepository } from "../../modules/TDDCycles/Domain/IDBJobsRepository";
 import { IDBCommitsRepository } from "../../modules/TDDCycles/Domain/IDBCommitsRepository";
-import { IGithubRepository } from "../../modules/TDDCycles/Domain/IGithubRepository";
+import { ITDDLabRepository } from "../../modules/TDDCycles/Domain/ITDDLabRepository";
 import { GetTDDCyclesUseCase } from "../../modules/TDDCycles/Application/getTDDCyclesUseCase";
 import { GetTestResultsUseCase } from "../../modules/TDDCycles/Application/getTestResultsUseCase";
 import { PostTDDLogUseCase } from "../../modules/TDDCycles/Application/postTDDLogUseCase";
@@ -21,7 +21,7 @@ class TDDCyclesController {
   constructor(
     dbCommitsRepository: IDBCommitsRepository,
     dbJobsRepository: IDBJobsRepository,
-    githubRepository: IGithubRepository
+    githubRepository: ITDDLabRepository
   ) {
     this.tddCyclesUseCase = new GetTDDCyclesUseCase(
       dbCommitsRepository,

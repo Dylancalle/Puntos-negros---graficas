@@ -1,5 +1,5 @@
 import { Octokit } from "octokit";
-import { IGithubRepository } from "../Domain/IGithubRepository";
+import { ITDDLabRepository } from "../Domain/ITDDLabRepository";
 import {
   CommitDataObject,
   CommitInformationDataObject,
@@ -9,7 +9,7 @@ import { JobDataObject } from "../Domain/JobDataObject";
 import { TDDCycleDataObject } from "../Domain/TDDCycleDataObject";
 
 dotenv.config();
-export class GithubRepository implements IGithubRepository {
+export class TDDLabRepository implements ITDDLabRepository {
   octokit: Octokit;
   githubRepository: any;
   constructor() {
@@ -239,7 +239,7 @@ export class GithubRepository implements IGithubRepository {
       }, ms);
     });
   }
-  async obtainRunsOfGithubActions(owner: string, repoName: string) {
+  async obtainRunsOfLog(owner: string, repoName: string) {
     try {
       const response: any = await Promise.race([
         this.octokit.request(`GET /repos/${owner}/${repoName}/actions/runs`),
@@ -273,15 +273,15 @@ export class GithubRepository implements IGithubRepository {
       throw error;
     }
   }
-  async getRunsOfGithubActionsIds(owner: string, repoName: string) {
-    const githubruns = await this.obtainRunsOfGithubActions(owner, repoName);
+  async getRunsOfLogIds(owner: string, repoName: string) {
+    const githubruns = await this.obtainRunsOfLog(owner, repoName);
     const commitsWithActions: [string, number][] =
       githubruns.data.workflow_runs.map((workFlowRun: any) => {
         return [workFlowRun.head_commit.id, workFlowRun.id];
       });
     return commitsWithActions;
   }
-  async getJobsDataFromGithub(
+  async getJobsDataFromLog(
     owner: string,
     repoName: string,
     listOfCommitsWithActions: [string, number][]

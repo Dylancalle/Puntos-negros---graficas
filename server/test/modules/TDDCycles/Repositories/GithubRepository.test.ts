@@ -9,7 +9,7 @@ import {
     tddCycleDataObject,
 } from "../../../__mocks__/TDDCycles/dataTypeMocks/githubResponseData";
 import { commitsFromGithub } from "../../../__mocks__/TDDCycles/dataTypeMocks/commitData";
-import { GithubRepository } from "../../../../src/modules/TDDCycles/Repositories/GithubRepository";
+import { GithubRepository } from "../../../../src/modules/TDDCycles/Repositories/TDDLabRepository";
 
 jest.mock("octokit", () => ({
     Octokit: jest.fn().mockImplementation(() => {
@@ -191,7 +191,7 @@ describe("GithubRepository", () => {
             githubRepository = new GithubRepository();
         });
 
-        describe("obtainRunsOfGithubActions", () => {
+        describe("obtainRunsOfLog", () => {
             it("should return the response from the GitHub API", async () => {
                 // Create a mock Octokit instance
                 const mockOctokit = {
@@ -204,7 +204,7 @@ describe("GithubRepository", () => {
                 const owner = "owner";
                 const repoName = "repoName";
 
-                const response = await githubRepository.obtainRunsOfGithubActions(
+                const response = await githubRepository.obtainRunsOfLog(
                     owner,
                     repoName
                 );
@@ -227,7 +227,7 @@ describe("GithubRepository", () => {
                 const repoName = "repoName";
 
                 await expect(
-                    githubRepository.obtainRunsOfGithubActions(owner, repoName)
+                    githubRepository.obtainRunsOfLog(owner, repoName)
                 ).rejects.toThrowError("Failed to obtain runs");
             });
         });
@@ -293,7 +293,7 @@ describe("GithubRepository", () => {
         });
     });
 
-    describe("getRunsOfGithubActionsIds", () => {
+    describe("getRunsOfLogIds", () => {
         it("should return an array of commit IDs with their corresponding workflow run IDs", async () => {
             const owner = "owner";
             const repoName = "repoName";
@@ -308,13 +308,13 @@ describe("GithubRepository", () => {
                 },
             };
 
-            // Mock the obtainRunsOfGithubActions method to return the mock response
-            githubRepository.obtainRunsOfGithubActions = jest
+            // Mock the obtainRunsOfLog method to return the mock response
+            githubRepository.obtainRunsOfLog= jest
                 .fn()
                 .mockResolvedValueOnce(mockResponse);
 
             const runsWithCommitIds =
-                await githubRepository.getRunsOfGithubActionsIds(owner, repoName);
+                await githubRepository.getRunsOfLogIds(owner, repoName);
 
             expect(runsWithCommitIds).toEqual([
                 ["commit1", 1],
@@ -326,18 +326,18 @@ describe("GithubRepository", () => {
             const owner = "owner";
             const repoName = "repoName";
 
-            // Mock the obtainRunsOfGithubActions method to throw an error
-            githubRepository.obtainRunsOfGithubActions = jest
+            // Mock the obtainRunsOfLog method to throw an error
+            githubRepository.obtainRunsOfLog = jest
                 .fn()
                 .mockRejectedValueOnce(new Error("Failed to obtain runs"));
 
             await expect(
-                githubRepository.getRunsOfGithubActionsIds(owner, repoName)
+                githubRepository.getRunsOfLogIds(owner, repoName)
             ).rejects.toThrowError("Failed to obtain runs");
         });
     });
 
-    describe("getJobsDataFromGithub", () => {
+    describe("getJobsDataFromLog", () => {
         it("should return a record of job data for each commit", async () => {
             const owner = "owner";
             const repoName = "repoName";
@@ -348,7 +348,7 @@ describe("GithubRepository", () => {
                 .fn()
                 .mockResolvedValueOnce({ data: { total_count: 10, jobs: 10 } });
 
-            const jobsData = await githubRepository.getJobsDataFromGithub(
+            const jobsData = await githubRepository.getJobsDataFromLog(
                 owner,
                 repoName,
                 listOfCommitsWithActions
@@ -373,7 +373,7 @@ describe("GithubRepository", () => {
                 .mockRejectedValueOnce(new Error("Failed to obtain job data"));
 
             await expect(
-                githubRepository.getJobsDataFromGithub(
+                githubRepository.getJobsDataFromLog(
                     owner,
                     repoName,
                     listOfCommitsWithActions
