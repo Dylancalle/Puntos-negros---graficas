@@ -1,100 +1,60 @@
-import fetch from "node-fetch";
 import { CommitDataObject } from "../domain/githubCommitInterfaces";
 import { GithubAPIRepository } from "../domain/GithubAPIRepositoryInterface";
 import { CommitCycle } from "../domain/TddCycleInterface";
 import { formatDate } from "../application/GetTDDCycles";
 import { VITE_API } from "../../../../config.ts";
 
-const GRAPHQL_URL = "https://api.github.com/graphql";
-
-export class GithubAPIAltAdapter implements GithubAPIRepository {
-  private backAPI: string;
-  private token: string;
+export class GithubAPIFetchAdapter implements GithubAPIRepository {
+  private readonly backendAPI: string;
 
   constructor() {
-    this.backAPI = VITE_API + "/TDDCycles";
-    this.token = process.env.GITHUB_TOKEN || "";
+    this.backendAPI = VITE_API + "/TDDCycles";
   }
 
-  private async queryGitHubGraphQL(query: string, variables: any = {}) {
-    const response = await fetch(GRAPHQL_URL, {
-      method: "POST",
-      headers: {
-        "Authorization": `bearer ${this.token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query, variables }),
-    });
+  async obtainCommitsOfRepo(owner: string, repoName: string): Promise<CommitDataObject[]> {
+    const endpoint = `https://raw.githubusercontent.com/${owner}/${repoName}/main/data/commits.json`;
 
+    const response = await fetch(endpoint);
     if (!response.ok) {
-      throw new Error(`GitHub GraphQL API error: ${response.status}`);
+      throw new Error(`Error fetching commits: ${response.status}`);
     }
 
-    return await response.json();
-  }
+    const commits = await response.json();
 
-  async obtainCommitsOfRepo(owner: string, repo: string): Promise<CommitDataObject[]> {
-    const query = `
-      query($owner: String!, $repo: String!) {
-        repository(owner: $owner, name: $repo) {
-          defaultBranchRef {
-            target {
-              ... on Commit {
-                history(first: 30) {
-                  edges {
-                    node {
-                      message
-                      committedDate
-                      oid
-                      url
-                      additions
-                      deletions
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const data = await this.queryGitHubGraphQL(query, { owner, repo });
-    const commitsRaw = data.data.repository.defaultBranchRef.target.history.edges;
-
-    return commitsRaw.map((edge: any) => {
-      const node = edge.node;
-      return {
-        html_url: node.url,
-        sha: node.oid,
-        stats: {
-          total: node.additions + node.deletions,
-          additions: node.additions,
-          deletions: node.deletions,
-          date: formatDate(new Date(node.committedDate)),
-        },
-        commit: {
-          date: new Date(node.committedDate),
-          message: node.message,
-          url: node.url,
-          comment_count: 0,
-        },
-        coverage: Math.random() * 100, // Simulación
-        test_count: Math.floor(Math.random() * 10), // Simulación
-      };
-    });
+    return commits.map((commit: any): CommitDataObject => ({
+      html_url: commit.html_url,
+      sha: commit.sha,
+      stats: {
+        total: commit.stats.total,
+        additions: commit.stats.additions,
+        deletions: commit.stats.deletions,
+        date: formatDate(new Date(commit.commit.author.date)),
+      },
+      commit: {
+        date: new Date(commit.commit.author.date),
+        message: commit.commit.message,
+        url: commit.html_url,
+        comment_count: 0,
+      },
+      coverage: commit.coverage,
+      test_count: commit.test_count,
+    }));
   }
 
   async obtainCommitTddCycle(owner: string, repoName: string): Promise<CommitCycle[]> {
-    const url = `${this.backAPI}/get-commits?owner=${owner}&repoName=${repoName}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Error from backend: ${res.status}`);
-    const data = await res.json();
+    const apiUrl = `${this.backendAPI}/get-commits?owner=${owner}&repoName=${repoName}`;
+    
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch TDD cycles: ${response.status}`);
+    }
 
-    return data.map((commitData: any) => ({
-      url: commitData.url,
-      sha: commitData.sha,
-      tddCylce: commitData.tdd_cycle ?? "null"
+    const data = await response.json();
+
+    return data.map((item: any): CommitCycle => ({
+      url: item.url,
+      sha: item.sha,
+      tddCylce: item.tdd_cycle ?? "null"
     }));
   }
 }
