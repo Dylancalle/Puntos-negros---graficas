@@ -12,7 +12,7 @@ export function adaptarDatos(authData: {
         email: authData.userEmail ?? " ",
         groupid: authData.usergroupid,
         role: authData.userRole ?? " "
-        // Ajusta según tu necesidad, no hay una correspondencia directa en AuthData
+        // Ajusta según tu necesidad, no hay una correspondencia directa en Au
       };
   }
 
