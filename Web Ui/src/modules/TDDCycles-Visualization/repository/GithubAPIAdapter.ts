@@ -1,60 +1,141 @@
+import { graphql } from "@octokit/graphql";
 import { CommitDataObject } from "../domain/githubCommitInterfaces";
 import { GithubAPIRepository } from "../domain/GithubAPIRepositoryInterface";
-import { CommitCycle } from "../domain/TddCycleInterface";
 import { formatDate } from "../application/GetTDDCycles";
+import { CommitCycle } from "../domain/TddCycleInterface.ts";
+import axios from "axios";
 import { VITE_API } from "../../../../config.ts";
 
-export class GithubAPIFetchAdapter implements GithubAPIRepository {
-  private readonly backendAPI: string;
+export class GithubAPIAdapter implements GithubAPIRepository {
+  graphqlClient: any;
+  backAPI: string;
 
   constructor() {
-    this.backendAPI = VITE_API + "/TDDCycles";
+    this.graphqlClient = graphql.defaults({
+      headers: {
+        authorization: `token ${import.meta.env.VITE_GITHUB_TOKEN}`, // usa tu token aquí
+      },
+    });
+    this.backAPI = VITE_API + "/TDDCycles";
+  }
+
+  async obtainUserName(owner: string): Promise<string> {
+    try {
+      const result = await this.graphqlClient(`
+        query {
+          user(login: "${owner}") {
+            name
+          }
+        }
+      `);
+      return result.user.name || owner;
+    } catch (error) {
+      console.error("Error obtaining user name:", error);
+      throw error;
+    }
   }
 
   async obtainCommitsOfRepo(owner: string, repoName: string): Promise<CommitDataObject[]> {
-    const endpoint = `https://raw.githubusercontent.com/${owner}/${repoName}/main/data/commits.json`;
+    try {
+      const result = await this.graphqlClient(`
+        query {
+          repository(owner: "${owner}", name: "${repoName}") {
+            defaultBranchRef {
+              target {
+                ... on Commit {
+                  history(first: 100) {
+                    edges {
+                      node {
+                        committedDate
+                        message
+                        oid
+                        url
+                        additions
+                        deletions
+                        changedFiles
+                        author {
+                          name
+                          email
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      `);
 
-    const response = await fetch(endpoint);
-    if (!response.ok) {
-      throw new Error(`Error fetching commits: ${response.status}`);
+      const commits = result.repository.defaultBranchRef.target.history.edges.map((edge: any) => {
+        const node = edge.node;
+        return {
+          html_url: node.url,
+          sha: node.oid,
+          stats: {
+            total: node.additions + node.deletions,
+            additions: node.additions,
+            deletions: node.deletions,
+            date: formatDate(new Date(node.committedDate)),
+          },
+          commit: {
+            date: new Date(node.committedDate),
+            message: node.message,
+            url: node.url,
+            comment_count: 0, // GraphQL no devuelve esto directamente
+          },
+          coverage: null,
+          test_count: 0,
+        };
+      });
+
+      return commits;
+    } catch (error) {
+      console.error("Error fetching commits via GraphQL:", error);
+      throw error;
     }
+  }
 
-    const commits = await response.json();
+  async obtainComplexityOfRepo(owner: string, repoName: string) {
+    try {
+      const repoUrl = `https://github.com/${owner}/${repoName}`;
+      const response = await axios.post("https://api-ccn.vercel.app/analyzeAvgCcn", {
+        repoUrl,
+      });
+      return response.data.results.map((complexity: any) => ({
+        ciclomaticComplexity: Math.round(complexity.average_cyclomatic_complexity),
+        commit: complexity.commit,
+      }));
+    } catch (error) {
+      console.error("Error obtaining complexity:", error);
+      throw error;
+    }
+  }
 
-    return commits.map((commit: any): CommitDataObject => ({
-      html_url: commit.html_url,
-      sha: commit.sha,
-      stats: {
-        total: commit.stats.total,
-        additions: commit.stats.additions,
-        deletions: commit.stats.deletions,
-        date: formatDate(new Date(commit.commit.author.date)),
-      },
-      commit: {
-        date: new Date(commit.commit.author.date),
-        message: commit.commit.message,
-        url: commit.html_url,
-        comment_count: 0,
-      },
-      coverage: commit.coverage,
-      test_count: commit.test_count,
-    }));
+  async obtainRunsOfLog(owner: string, repoName: string) {
+    // Puede omitirse en esta versión si no estás cruzando con Actions
+    return [];
+  }
+
+  async obtainJobsOfRepo(owner: string, repoName: string) {
+    // También omitido aquí; se puede usar REST si querés combinar
+    return [];
   }
 
   async obtainCommitTddCycle(owner: string, repoName: string): Promise<CommitCycle[]> {
-    const apiUrl = `${this.backendAPI}/get-commits?owner=${owner}&repoName=${repoName}`;
-    
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch TDD cycles: ${response.status}`);
+    try {
+      const response = await axios.get(
+        `${this.backAPI}/get-commits?owner=${owner}&repoName=${repoName}`
+      );
+
+      return response.data.map((commitData: any) => ({
+        url: commitData.url,
+        sha: commitData.sha,
+        tddCylce: commitData.tdd_cycle ?? "null"
+      }));
+    } catch (error) {
+      console.error("Error obtaining TDD cycles:", error);
+      throw error;
     }
-
-    const data = await response.json();
-
-    return data.map((item: any): CommitCycle => ({
-      url: item.url,
-      sha: item.sha,
-      tddCylce: item.tdd_cycle ?? "null"
-    }));
   }
 }
