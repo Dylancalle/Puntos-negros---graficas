@@ -48,10 +48,12 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
   const [openModal, setOpenModal] = useState(false);
   const [selectedCommit, setSelectedCommit] = useState<CommitDataObject | null>(null);
   const [commitTimelineData, setCommitTimelineData] = useState<any[]>([]);
+
   const chartRefCoverage = useRef<any>();
   const chartRefModifiedLines = useRef<any>();
   const chartRefTestCount = useRef<any>();
   const [graph, setGraph] = useState<string>("");
+
   const testCounts = commits.map((commit) => commit.test_count);
   const minTestCount = 0;
   const maxTestCount = 100;
@@ -75,7 +77,6 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
     if (repoOwner && repoName) {
       try {
         await UploadTDDLogFile(file, undefined, repoOwner, repoName);
-
       } catch (error) {
         console.error("Error al subir el archivo:", error);
       }
@@ -83,28 +84,26 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
       console.error("No se encontraron repoOwner y repoName en el enlace.");
     }
   };
+
+  const getBubbleSizeAndColor = (totalChanges: number) => {
+    // Calcular el tamaño de la burbuja basado en las líneas modificadas
+    const size = Math.max(10, totalChanges / 3);  // Ajuste para mayor tamaño de las burbujas
   
-  function containsRefactor(commitMessage: string): boolean {
-    const regex = /\brefactor(\w*)\b/i;
-    return regex.test(commitMessage);
-  }
-
-  const getBubbleSizeAndColor = (coverage: number) => {
-    // Calcular el tamaño de la burbuja basado en la cobertura
-    const size = Math.max(5, coverage / 10);  // Ajustable, el tamaño mínimo es 5
-    
-    // El color verde varía solo según el tamaño de la burbuja
-    let colorValue = 60 + (size * 3);  // A mayor tamaño, más oscuro el verde
-    colorValue = Math.min(colorValue, 255);  // Limitar el valor máximo a 255
-
-    // La opacidad también depende del tamaño (menos tamaño, más opacidad)
-    let opacity = Math.max(0.2, (size / 15)); // Menos tamaño, más opacidad
-
-    // Generar el color en formato rgba
-    const color = `rgba(0, ${colorValue}, 0, ${opacity})`;
-
+    // Asignar el color basado en el número de líneas modificadas
+    let color;
+    if (totalChanges <= 25) {
+      color = "rgba(65, 154, 77, 0.48)"; // Verde claro para cambios pequeños (rango 25)
+    } else if (totalChanges > 25 && totalChanges <= 50) {
+      color = "rgba(36, 137, 38, 0.72)"; // Verde medio para cambios medianos (rango 50)
+    } else if (totalChanges > 50 && totalChanges <= 75) {
+      color = "rgba(54, 209, 75, 0.86)"; // Verde oscuro para cambios grandes (rango 75)
+    } else {
+      color = "rgb(11, 136, 26)"; // Verde muy oscuro para cambios muy grandes (mayores a 75)
+    }
+  
     return { size, color };
   };
+  
 
   const changeGraph = (graphText: string) => {
     setGraph(graphText);
@@ -305,7 +304,7 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
                   .reverse()
                   .map((commit, index) => {
                     const job = jobsByCommit.find((job) => job.sha === commit.sha);
-                    const { color, size } = getBubbleSizeAndColor(commit.coverage);
+                    const { color, size } = getBubbleSizeAndColor(commit.stats.total); // Tamaño y color basado solo en líneas modificadas
 
                     return {
                       label: `Commit ${index + 1}`,
@@ -313,10 +312,10 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
                         {
                           x: index + 1,
                           y: commit.test_count,
-                          r: size,  // Usamos el tamaño calculado
+                          r: size,  // Tamaño calculado
                         },
                       ],
-                      backgroundColor: color,  // Usamos el color calculado
+                      backgroundColor: color,  // Color calculado
                       borderColor: `rgba(0,0,0,0.2)`,
                     };
                   }),
@@ -376,95 +375,9 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
               commitTimelineData={commitTimelineData}
               commits={commits}
             />
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "35px",
-                justifyContent: "space-between",
-                marginBottom: "30px",
-              }}
-            >
-              <div
-                style={{ width: "30%" }}
-                onClick={() => changeGraph("Total Número de Tests")}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    changeGraph("Líneas de Código Modificadas");
-                  }
-                }}
-                role="button"
-              >
-                <h3>Total Número de Tests</h3>
-                <Line
-                  data={getLineChartData(
-                    "Total Número de Tests",
-                    commits.map((commit) => commit.test_count)
-                  )}
-                  options={getChartOptions("Número de Tests")}
-                  ref={chartRefTestCount}
-                />
-              </div>
-              <div
-                style={{ width: "30%" }}
-                onClick={() => changeGraph("Cobertura de Código")}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    changeGraph("Líneas de Código Modificadas");
-                  }
-                }}
-                role="button"
-              >
-                <h3>Cobertura de Código</h3>
-                <Line
-                  data={getLineChartData(
-                    "Porcentaje de Cobertura de Código",
-                    commits.map((commit) => commit.coverage ?? 0)
-                  )}
-                        
-                  options={getChartOptions("Cobertura de Código")}
-                  ref={chartRefCoverage}
-                />
-              </div>
-              <div
-                style={{ width: "30%" }}
-                onClick={() => changeGraph("Líneas de Código Modificadas")}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    changeGraph("Líneas de Código Modificadas");
-                  }
-                }}
-                role="button"
-              >
-                <h3>Líneas de Código Modificadas</h3>
-                <Line
-                  data={getLineChartData(
-                    "Total de Líneas de Código Modificadas",
-                    commits.map((commit) => commit.stats.total)
-                  )}
-                  options={getChartOptions("Líneas de Código Modificadas")}
-                  ref={chartRefModifiedLines}
-                />
-              </div>
-            </div>
           </div>
         </div>
       ) : null}
-
-      {graph && (
-        <TDDLineCharts
-          port={port}
-          role={role}
-          filteredCommitsObject={commits}
-          jobsByCommit={jobsByCommit}
-          optionSelected={graph}
-          complexity={null}
-          commitsCycles={null}
-        />
-      )}
     </>
   );
 };
