@@ -90,27 +90,35 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
     return regex.test(commitMessage);
   }
 
-  const getColorByCoverage = (testCountsColor: number, isRefactor: boolean) => {
-    let colorValue;
-    let opacity = 2;
-    const baseColor = isRefactor ? 'blue' : 'green';
-    if (testCountsColor >= labels[1]) {
-      colorValue = 110;
-    } else if (testCountsColor < labels[1] && testCountsColor >= labels[2]) {
-      colorValue = 110;
-      opacity = 0.5;
-    } else if (testCountsColor < labels[2] && testCountsColor >= labels[3]) {
-      colorValue = 110;
-      opacity = 0.6;
-    } else if (testCountsColor < labels[3]) {
-      colorValue = 110;
-      opacity = 0.2;
-    }
+ const getColorByCoverage = (coverage: number) => {
+  let colorValue;
+  let opacity = 1;
+
+  // Definir los umbrales para la cobertura
+  if (coverage >= 75) {
+    colorValue = 120;  // Verde más intenso
+    opacity = 1;  // Opacidad máxima
+  } else if (coverage >= 50 && coverage < 75) {
+    colorValue = 100;  // Verde intermedio
+    opacity = 0.75;  // Opacidad media
+  } else if (coverage >= 25 && coverage < 50) {
+    colorValue = 80;  // Verde más suave
+    opacity = 0.5;  // Opacidad más baja
+  } else {
+    colorValue = 60;  // Verde tenue
+    opacity = 0.25;  // Muy baja opacidad
+  }
+
+  return `rgba(0, ${colorValue}, 0, ${opacity})`;
+};
+
+// Calculando el radio de cada círculo basado en la cobertura
+const getBubbleSize = (coverage: number) => {
+  // La fórmula ajusta el tamaño con un máximo de 15 y un mínimo de 5 (ajustable según preferencia)
+  return Math.max(5, coverage / 27); 
+};
+
   
-    return baseColor === 'green'
-      ? `rgba(0, ${colorValue}, 0, ${opacity})`
-      : `rgba(0, 100, 255, ${opacity})`;
-  };
 
   const getColorByConclusion = (job: any, coverage: number, commitMessage: string) => {
   if (job?.conclusion === "success") {
