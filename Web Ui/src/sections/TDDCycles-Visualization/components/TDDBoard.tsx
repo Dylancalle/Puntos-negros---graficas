@@ -14,7 +14,6 @@ import { JobDataObject } from "../../../modules/TDDCycles-Visualization/domain/j
 import { GithubAPIRepository } from "../../../modules/TDDCycles-Visualization/domain/GithubAPIRepositoryInterface";
 import TDDLineCharts from "./TDDLineChart";
 
-
 import { VITE_API } from "../../../../config";
 import { UploadTDDLogFile } from "../../../modules/Assignments/application/UploadTDDLogFile";
 import { useSearchParams } from "react-router-dom";
@@ -90,49 +89,23 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
     return regex.test(commitMessage);
   }
 
- const getColorByCoverage = (coverage: number) => {
-  let colorValue;
-  let opacity = 1;
+  const getBubbleSizeAndColor = (coverage: number) => {
+    // Calcular el tamaño de la burbuja basado en la cobertura
+    const size = Math.max(5, coverage / 10);  // Ajustable, el tamaño mínimo es 5
+    
+    // El color verde varía solo según el tamaño de la burbuja
+    let colorValue = 60 + (size * 3);  // A mayor tamaño, más oscuro el verde
+    colorValue = Math.min(colorValue, 255);  // Limitar el valor máximo a 255
 
-  // Definir los umbrales para la cobertura
-  if (coverage >= 75) {
-    colorValue = 120;  // Verde más intenso
-    opacity = 1;  // Opacidad máxima
-  } else if (coverage >= 50 && coverage < 75) {
-    colorValue = 100;  // Verde intermedio
-    opacity = 0.75;  // Opacidad media
-  } else if (coverage >= 25 && coverage < 50) {
-    colorValue = 80;  // Verde más suave
-    opacity = 0.5;  // Opacidad más baja
-  } else {
-    colorValue = 60;  // Verde tenue
-    opacity = 0.25;  // Muy baja opacidad
-  }
+    // La opacidad también depende del tamaño (menos tamaño, más opacidad)
+    let opacity = Math.max(0.2, (size / 15)); // Menos tamaño, más opacidad
 
-  return `rgba(0, ${colorValue}, 0, ${opacity})`;
-};
+    // Generar el color en formato rgba
+    const color = `rgba(0, ${colorValue}, 0, ${opacity})`;
 
-// Calculando el radio de cada círculo basado en la cobertura
-const getBubbleSize = (coverage: number) => {
-  // La fórmula ajusta el tamaño con un máximo de 15 y un mínimo de 5 (ajustable según preferencia)
-  return Math.max(5, coverage / 27); 
-};
+    return { size, color };
+  };
 
-  
-
-  const getColorByConclusion = (job: any, coverage: number, commitMessage: string) => {
-  if (job?.conclusion === "success") {
-    const isRefactor = containsRefactor(commitMessage);
-    console.log("commit message", commitMessage);
-    return getColorByCoverage(coverage, isRefactor);
-  } else if (job?.conclusion === "failure") {
-    return "red";
-  } else if (job?.conclusion === null) {
-    return "black";
-  } else {
-    return "black";
-  }
-};
   const changeGraph = (graphText: string) => {
     setGraph(graphText);
     localStorage.setItem("selectedMetric", graphText);
@@ -196,6 +169,7 @@ const getBubbleSize = (coverage: number) => {
       ],
     };
   };
+
   const chartRef = useRef<any>();  
 
   const onClick = async (event: any) => {
@@ -232,15 +206,13 @@ const getBubbleSize = (coverage: number) => {
       }
     }
   };
-  
+
   const handleCloseModal = () => {
     setOpenModal(false);
     setSelectedCommit(null);
   };
-  
-  useEffect(() => {
-  
-  }, [graph]);
+
+  useEffect(() => {}, [graph]);
 
   const [barraHeight, setBarraHeight] = useState(window.innerWidth / 3);
 
@@ -258,7 +230,6 @@ const getBubbleSize = (coverage: number) => {
     // Limpiamos el listener cuando el componente se desmonte
     return () => window.removeEventListener('resize', actualizarAltura);
   }, []);
-  
 
   return (
     <>
@@ -271,7 +242,7 @@ const getBubbleSize = (coverage: number) => {
             justifyContent: "center",
           }}
         >
-          <div style={{ width: "85%", marginBottom: "20px",marginRight:"20px", position: 'relative' }}>
+          <div style={{ width: "85%", marginBottom: "20px", marginRight: "20px", position: 'relative' }}>
             <h2>Métricas de Commits con Cobertura de Código</h2>
               <div
                 style={{
@@ -295,7 +266,6 @@ const getBubbleSize = (coverage: number) => {
                 style={{
                   transform: 'translateX(-33%) translateY(-18%)',
                   color: "#000",
-
                   fontWeight: "bold",
                 }}
               >
@@ -335,11 +305,7 @@ const getBubbleSize = (coverage: number) => {
                   .reverse()
                   .map((commit, index) => {
                     const job = jobsByCommit.find((job) => job.sha === commit.sha);
-                    const backgroundColor = getColorByConclusion(
-                      job,
-                      commit.coverage,
-                      commit.commit.message
-                    );
+                    const { color, size } = getBubbleSizeAndColor(commit.coverage);
 
                     return {
                       label: `Commit ${index + 1}`,
@@ -347,10 +313,10 @@ const getBubbleSize = (coverage: number) => {
                         {
                           x: index + 1,
                           y: commit.test_count,
-                          r: Math.max(10, commit.stats.total / 1.5),
+                          r: size,  // Usamos el tamaño calculado
                         },
                       ],
-                      backgroundColor,
+                      backgroundColor: color,  // Usamos el color calculado
                       borderColor: `rgba(0,0,0,0.2)`,
                     };
                   }),
@@ -367,7 +333,7 @@ const getBubbleSize = (coverage: number) => {
                         }
                         return `Commit ${index + 1}`;
                       },
-                      stepSize: 1, 
+                      stepSize: 1,
                     },
                   },
                   y: {
@@ -398,7 +364,7 @@ const getBubbleSize = (coverage: number) => {
                   },
                 },
               }}
-            />;
+            />
             <CommitTimelineDialog
               open={openModal}
               handleCloseModal={handleCloseModal}
@@ -485,24 +451,19 @@ const getBubbleSize = (coverage: number) => {
               </div>
             </div>
           </div>
-          <div>
-          </div>
         </div>
       ) : null}
 
       {graph && (
-        <>
-          <TDDLineCharts
-            port={port}
-            role={role}
-            filteredCommitsObject={commits}
-            jobsByCommit={jobsByCommit}
-            optionSelected={graph}
-            complexity={null}
-            commitsCycles= {null}
-          />
-        </>
-
+        <TDDLineCharts
+          port={port}
+          role={role}
+          filteredCommitsObject={commits}
+          jobsByCommit={jobsByCommit}
+          optionSelected={graph}
+          complexity={null}
+          commitsCycles={null}
+        />
       )}
     </>
   );
