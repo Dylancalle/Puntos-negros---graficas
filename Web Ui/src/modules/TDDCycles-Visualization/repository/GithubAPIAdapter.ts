@@ -7,6 +7,8 @@ import { CommitCycle } from "../domain/TddCycleInterface.ts";
 import axios from "axios";
 import { VITE_API } from "../../../../config.ts";
 
+//import fetch from "node-fetch"
+
 export class GithubAPIAdapter implements GithubAPIRepository {
   octokit: Octokit;
   backAPI: string;
@@ -33,6 +35,7 @@ export class GithubAPIAdapter implements GithubAPIRepository {
     }
   }
 
+  /*
   async obtainCommitsOfRepo(
     owner: string,
     repoName: string,
@@ -77,6 +80,48 @@ export class GithubAPIAdapter implements GithubAPIRepository {
       throw error;
     }
   }
+  */
+
+  async obtainCommitsOfRepo(
+    owner: string,
+    repoName: string,
+  ): Promise<CommitDataObject[]> {
+    try {
+      const response = await fetch(
+        `https://raw.githubusercontent.com/${owner}/${repoName}/refs/heads/pruebas-JPMJ/commit-history.json`
+      );
+      if (response.status !== 200) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const commitsData = (await response.json()) as any[];
+      console.log(commitsData);
+  
+      const commitDataObject: CommitDataObject[] = commitsData.map(
+        (commitData: any) => ({
+          html_url: commitData.html_url,
+          sha: commitData.sha,
+          stats: {
+            total: commitData.stats.total,
+            additions: commitData.stats.additions,
+            deletions: commitData.stats.deletions,
+          },
+          commit: {
+            date: new Date(commitData.commit.date),
+            message: commitData.commit.message,
+            url: commitData.commit.url,
+            comment_count: commitData.commit.comment_count,
+          },
+          coverage: commitData.coverage,
+          test_count: commitData.test_count,
+        })
+      ).sort((a, b) => b.commit.date.getTime() - a.commit.date.getTime());
+      return commitDataObject;
+    } catch (error) {
+      console.error("Error reading commits from JSON", error);
+      throw error;
+    }
+  }
+
   async obtainComplexityOfRepo(owner: string, repoName: string) {
     try {
       const repoUrl = `https://github.com/${owner}/${repoName}`;
@@ -104,7 +149,7 @@ export class GithubAPIAdapter implements GithubAPIRepository {
     }
   }
 
-  async obtainRunsOfGithubActions(owner: string, repoName: string) {
+  async obtainRunsOfLog(owner: string, repoName: string) {
     try {
       const response = await this.octokit.request(
         `GET /repos/${owner}/${repoName}/actions/runs`,
@@ -123,20 +168,20 @@ export class GithubAPIAdapter implements GithubAPIRepository {
     repoName: string,
   ): Promise<JobDataObject[]> {
     try {
-      const response = await axios.get(`${this.backAPI}/jobs`, {
-        params: { owner, repoName },
-      });
-
+      const response = await fetch(
+        `https://raw.githubusercontent.com/${owner}/${repoName}/refs/heads/pruebas-JPMJ/commit-history.json`
+      );
+      
       if (response.status !== 200) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-      const responseData = response.data;
-      const jobs: JobDataObject[] = responseData.map((jobData: any) => ({
-        sha: jobData.sha,
-        conclusion: jobData.conclusion,
+      
+      const commitsData = await response.json();
+      
+      return commitsData.map((commit: any) => ({
+        sha: commit.sha,
+        conclusion: commit.job_conclusion
       }));
-
-      return jobs;
     } catch (error) {
       console.error("Error obtaining jobs:", error);
       throw error;

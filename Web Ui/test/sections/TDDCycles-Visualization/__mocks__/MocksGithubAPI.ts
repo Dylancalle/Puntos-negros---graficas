@@ -11,7 +11,7 @@ export class MockGithubAPI implements GithubAPIRepository {
     let commits = mockArrayCommitData;
     return commits;
   }
-  obtainRunsOfGithubActions(): any {
+  obtainRunsOfLog(): any {
     return {};
   }
 
@@ -37,7 +37,7 @@ export class MockGithubAPIEmpty implements GithubAPIRepository {
     let commits: CommitDataObject[] = [];
     return commits;
   }
-  obtainRunsOfGithubActions(): any {
+  obtainRunsOfLog(): any {
     return {};
   }
 
@@ -62,7 +62,7 @@ export class MockGithubAPIError implements GithubAPIRepository {
   async obtainCommitsOfRepo(): Promise<CommitDataObject[]> {
     throw new Error("no commits");
   }
-  obtainRunsOfGithubActions(): any {
+  obtainRunsOfLog(): any {
     return {};
   }
 

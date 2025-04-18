@@ -6,7 +6,7 @@ export interface GithubAPIRepository {
     repoName: string,
   ): Promise<CommitDataObject[]>;
 
-  obtainRunsOfGithubActions(owner: string, repoName: string): any;
+  obtainRunsOfLog(owner: string, repoName: string): any;
 
   obtainJobsOfRepo(owner: string, repoName: string): any;
   obtainComplexityOfRepo(owner:string, repoName: string): any;
