@@ -138,8 +138,8 @@ useEffect(() => {
      
         let job = jobsByCommit?.find((job) => job.sha === commit.sha);
         if (job != null && job.conclusion === "success") return containsRefactor(commit.commit.message) ? "blue" : "green";
-        else if (job === undefined) return "black";
-        else return "red";
+        else if (job === undefined) return "black"; 
+        else return  "green";
       });
       return conclusions.reverse();
     } else {

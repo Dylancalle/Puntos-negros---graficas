@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Bubble, getElementAtEvent, Line } from "react-chartjs-2";
+import { Bubble, getElementAtEvent } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   Tooltip,
@@ -12,12 +12,10 @@ import {
 import { CommitDataObject } from "../../../modules/TDDCycles-Visualization/domain/githubCommitInterfaces";
 import { JobDataObject } from "../../../modules/TDDCycles-Visualization/domain/jobInterfaces";
 import { GithubAPIRepository } from "../../../modules/TDDCycles-Visualization/domain/GithubAPIRepositoryInterface";
-import TDDLineCharts from "./TDDLineChart";
-
-import { VITE_API } from "../../../../config";
 import { UploadTDDLogFile } from "../../../modules/Assignments/application/UploadTDDLogFile";
 import { useSearchParams } from "react-router-dom";
 import CommitTimelineDialog from "./TDDCommitTimelineDialog";
+import { VITE_API } from "../../../../config";
 
 ChartJS.register(
   Tooltip,
@@ -85,11 +83,10 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
     }
   };
 
+  // Función para obtener el tamaño y color de la burbuja
   const getBubbleSizeAndColor = (totalChanges: number) => {
-    // Calcular el tamaño de la burbuja basado en las líneas modificadas
     const size = Math.max(10, totalChanges / 3);  // Ajuste para mayor tamaño de las burbujas
-  
-    // Asignar el color basado en el número de líneas modificadas
+    
     let color;
     if (totalChanges <= 25) {
       color = "rgba(65, 154, 77, 0.48)"; // Verde claro para cambios pequeños (rango 25)
@@ -103,7 +100,6 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
   
     return { size, color };
   };
-  
 
   const changeGraph = (graphText: string) => {
     setGraph(graphText);
@@ -292,7 +288,6 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
                 </p>
               ))}
             </div>
-
             </div>
 
             <Bubble
