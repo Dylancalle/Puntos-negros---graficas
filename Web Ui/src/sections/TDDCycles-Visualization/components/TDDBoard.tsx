@@ -116,7 +116,7 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
   if (job?.conclusion === "success") {
     const isRefactor = containsRefactor(commitMessage);
     console.log("commit message", commitMessage);
-    return getColorByCoverage(coverage, isRefactor);
+    return getColorByCoverage(coverage || 0, isRefactor);
   } else if (job?.conclusion === "failure") {
     return "red";
   } else if (job?.conclusion === null) {
@@ -177,12 +177,19 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
           backgroundColor: commits
             .map((commit) => {
               const job = jobsByCommit.find((job) => job.sha === commit.sha);
-              if (job?.conclusion === "success") return "green";
-              else if (job === undefined) return "black";
-              else return "red";
+              //if (job?.conclusion === "success") return "green";
+              //else if (job === undefined) return "black";
+              //else return "red";
+              return getColorByConclusion(job, commit.coverage, commit.commit.message);
             })
             .reverse(),
           borderColor: "rgba(0, 0, 0, 0.2)",
+          pointBackgroundColor: commits
+          .map((commit) => {
+            const job = jobsByCommit.find((job) => job.sha === commit.sha);
+            return getColorByConclusion(job, commit.coverage, commit.commit.message);
+          })
+          .reverse(),
           links: commits.map((commit) => commit.html_url).reverse(),
         },
       ],
@@ -435,23 +442,72 @@ const TDDBoard: React.FC<CycleReportViewProps> = ({
               <div
                 style={{ width: "30%" }}
                 onClick={() => changeGraph("Cobertura de Código")}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    changeGraph("Líneas de Código Modificadas");
-                  }
-                }}
+                //tabIndex={0}
+                //onKeyDown={(e) => {
+                //  if (e.key === "Enter" || e.key === " ") {
+                //    changeGraph("Líneas de Código Modificadas");
+                //  }
+                //}}
                 role="button"
               >
                 <h3>Cobertura de Código</h3>
                 <Line
-                  data={getLineChartData(
-                    "Porcentaje de Cobertura de Código",
-                    commits.map((commit) => commit.coverage ?? 0)
-                  )}
-                        
-                  options={getChartOptions("Cobertura de Código")}
-                  ref={chartRefCoverage}
+                  data={{
+                    labels: commits.map((_, index) => `Commit ${index + 1}`),
+                    datasets: [{
+                      label: "Porcentaje de Cobertura de Código",
+                      data: commits.map(c => c.coverage ?? 0).reverse(),
+                      backgroundColor: commits.map(commit => {
+                        const job = jobsByCommit.find(j => j.sha === commit.sha);
+                        return getColorByConclusion(job, commit.coverage, commit.commit.message);
+                      }).reverse(),
+                      borderColor: 'rgba(75, 192, 192, 0.6)',
+                      pointBackgroundColor: commits.map(commit => {
+                        const job = jobsByCommit.find(j => j.sha === commit.sha);
+                        return getColorByConclusion(job, commit.coverage, commit.commit.message);
+                      }).reverse(),
+                      pointBorderColor: '#fff',
+                      pointHoverRadius: 8,
+                      pointHitRadius: 10
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        display: true,
+                        position: 'top',
+                      },
+                      tooltip: {
+                        callbacks: {
+                          label: (context) => {
+                            const commit = commits[commits.length - 1 - context.dataIndex];
+                            return [
+                              `Cobertura: ${commit.coverage ?? 0}%`,
+                              `Tests: ${commit.test_count}`,
+                              `Estado: ${jobsByCommit.find(j => j.sha === commit.sha)?.conclusion || 'desconocido'}`
+                            ];
+                          }
+                        }
+                      }
+                    },
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        max: 100,
+                        title: {
+                          display: true,
+                          text: 'Porcentaje de Cobertura'
+                        }
+                      },
+                      x: {
+                        title: {
+                          display: true,
+                          text: 'Commits'
+                        }
+                      }
+                    }
+                  }}
                 />
               </div>
               <div
